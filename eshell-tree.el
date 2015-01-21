@@ -25,12 +25,41 @@
 
 (require 'cl-lib)
 
-(defun eshell-tree-show-directory (directory prefix)
-  (let ((self (concat prefix directory "\n"))
-        (children (cl-remove-if-not
+(defun eshell-tree (filename)
+  (eshell-tree-show-file (cons filename (file-attributes filename)) "" ""))
+
+(defun eshell-tree-show-file (file prefix-self prefix-child)
+  (concat
+   prefix-self (car file) "\n"
+   (cond
+    ((stringp (cadr file)) "") ;; symlink
+    ((cadr file) (eshell-tree-show-directory-content
+                 (car file) prefix-child)) ;; directory
+    (t "") ;; regular file
+    )))
+
+(defun eshell-tree-show-directory-content (dirname prefix)
+  (let ((children (cl-remove-if-not
                    (symbol-function 'eshell-tree-displayable-file)
-                   (directory-files-and-attributes directory))))
-    (concat self "")))
+                   (directory-files-and-attributes dirname))))
+    (when children
+      (let ((preceding (reverse (cdr (reverse children))))
+            (last (car (reverse children)))
+            (default-directory (concat default-directory dirname "/")))
+        (concat
+         (apply 'concat
+                (mapcar
+                 (lambda (file)
+                   (eshell-tree-show-file
+                    file
+                    (concat prefix "|-- ") (concat prefix "|   ")))
+                 preceding))
+         (eshell-tree-show-file
+          last
+          (concat prefix "`-- ") (concat prefix "    ")))))))
+
+(defun eshell-tree-add-directory (dirname file)
+  (cons (concat dirname "/" (car file)) (cdr file)))
 
 (defun eshell-tree-displayable-file (file)
   (eshell-tree-displayable-filename (nth 0 file)))
