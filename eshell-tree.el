@@ -21,12 +21,24 @@
 ;; (require 'eshell-tree)
 ;; (fset 'eshell/tree (symbol-function 'eshell-tree))
 
+;; TODO:
+;; find-file by click
+;; open/close directory by click
+;; follow symlink
+
 ;;; Code:
 
 (require 'cl-lib)
 
-(defun eshell-tree (filename)
-  (eshell-tree-show-file (cons filename (file-attributes filename)) "" ""))
+(defun eshell-tree (&rest filenames)
+  (if filenames
+      (mapconcat (symbol-function 'eshell-tree-single-file) filenames "")
+    (eshell-tree-single-file ".")))
+
+(defun eshell-tree-single-file (filename)
+  (let ((attr (file-attributes filename)))
+    (when attr
+      (eshell-tree-show-file (cons filename attr) "" ""))))
 
 (defun eshell-tree-show-file (file prefix-self prefix-child)
   (concat
