@@ -22,8 +22,8 @@
 ;; (fset 'eshell/tree (symbol-function 'eshell-tree))
 
 ;; TODO:
-;; find-file by click
 ;; open/close directory by click
+;; max-depth
 ;; follow symlink
 
 ;;; Code:
@@ -40,9 +40,21 @@
     (when attr
       (eshell-tree-show-file (cons filename attr) "" ""))))
 
+(defun eshell-tree-file-button (filename)
+  (with-output-to-string
+    (with-current-buffer
+        standard-output
+      (insert-text-button
+       filename
+       'eshell-tree-file-name
+       (concat default-directory filename)
+       'action
+       (lambda (button)
+         (find-file (button-get button 'eshell-tree-file-name)))))))
+
 (defun eshell-tree-show-file (file prefix-self prefix-child)
   (concat
-   prefix-self (car file) "\n"
+   prefix-self (eshell-tree-file-button (car file)) "\n"
    (cond
     ((stringp (cadr file)) "") ;; symlink
     ((cadr file) (eshell-tree-show-directory-content
