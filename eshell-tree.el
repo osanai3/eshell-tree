@@ -53,12 +53,7 @@
        (lambda (button)
          (find-file (button-get button 'eshell-tree-file-name)))))))
 
-(defun eshell-tree-directory-files (dirname)
-  (cl-remove-if-not
-   (symbol-function 'eshell-tree-displayable-file)
-   (directory-files-and-attributes dirname)))
-
-(defun eshell-tree-single-file-2 (filename)
+(defun eshell-tree-single-file (filename)
   (let ((attr (file-attributes filename)))
     (when attr
       (eshell-tree-show-file-from-struct
@@ -66,6 +61,11 @@
 
 (defun eshell-tree-make-struct (file open children)
   (list (cons 'file file) (cons 'open open) (cons 'children children)))
+
+(defun eshell-tree-directory-files (dirname)
+  (cl-remove-if-not
+   (symbol-function 'eshell-tree-displayable-file)
+   (directory-files-and-attributes dirname)))
 
 (defun eshell-tree-build-struct (file)
   (cond
@@ -90,7 +90,7 @@
      (cond
       ((stringp (cadr file)) "") ;;symlink
       ((cadr file)
-       (let ((default-directory (car file))
+       (let ((default-directory (concat default-directory (car file) "/"))
              (preceding (reverse (cdr (reverse children))))
              (last (car (reverse children))))
          (concat
@@ -105,41 +105,6 @@
            last (concat prefix-child "`-- ") (concat prefix-child "    "))))) ;; directory
       (t "") ;; regular file
       ))))
-
-(defun eshell-tree-show-file (file prefix-self prefix-child)
-  (concat
-   prefix-self (eshell-tree-file-button (car file))
-   (when (cadr file) (concat " " "[-]"))
-   "\n"
-   (cond
-    ((stringp (cadr file)) "") ;; symlink
-    ((cadr file) (eshell-tree-show-directory-content
-                 (car file) prefix-child)) ;; directory
-    (t "") ;; regular file
-    )))
-
-(defun eshell-tree-show-directory-content (dirname prefix)
-  (let ((children (cl-remove-if-not
-                   (symbol-function 'eshell-tree-displayable-file)
-                   (directory-files-and-attributes dirname))))
-    (when children
-      (let ((preceding (reverse (cdr (reverse children))))
-            (last (car (reverse children)))
-            (default-directory (concat default-directory dirname "/")))
-        (concat
-         (apply 'concat
-                (mapcar
-                 (lambda (file)
-                   (eshell-tree-show-file
-                    file
-                    (concat prefix "|-- ") (concat prefix "|   ")))
-                 preceding))
-         (eshell-tree-show-file
-          last
-          (concat prefix "`-- ") (concat prefix "    ")))))))
-
-(defun eshell-tree-add-directory (dirname file)
-  (cons (concat dirname "/" (car file)) (cdr file)))
 
 (defun eshell-tree-displayable-file (file)
   (eshell-tree-displayable-filename (nth 0 file)))
