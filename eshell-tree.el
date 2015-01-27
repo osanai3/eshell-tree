@@ -36,11 +36,6 @@
       (mapconcat (symbol-function 'eshell-tree-single-file) filenames "")
     (eshell-tree-single-file ".")))
 
-(defun eshell-tree-single-file (filename)
-  (let ((attr (file-attributes filename)))
-    (when attr
-      (eshell-tree-show-file (cons filename attr) "" ""))))
-
 (defun eshell-tree-file-button (filename)
   (with-output-to-string
     (with-current-buffer
@@ -54,10 +49,9 @@
          (find-file (button-get button 'eshell-tree-file-name)))))))
 
 (defun eshell-tree-single-file (filename)
-  (let ((attr (file-attributes filename)))
-    (when attr
-      (eshell-tree-show-file-from-struct
-       (eshell-tree-build-struct (cons filename attr)) "" ""))))
+  (let ((struct (eshell-tree-build-struct-from-filename filename)))
+    (when struct
+      (eshell-tree-show-file-from-struct struct "" ""))))
 
 (defun eshell-tree-make-struct (file open children)
   (list (cons 'file file) (cons 'open open) (cons 'children children)))
@@ -66,6 +60,11 @@
   (cl-remove-if-not
    (symbol-function 'eshell-tree-displayable-file)
    (directory-files-and-attributes dirname)))
+
+(defun eshell-tree-build-struct-from-filename (filename)
+  (let ((attr (file-attributes filename)))
+    (when attr
+      (eshell-tree-build-struct (cons filename attr)))))
 
 (defun eshell-tree-build-struct (file)
   (cond
@@ -105,6 +104,13 @@
            last (concat prefix-child "`-- ") (concat prefix-child "    "))))) ;; directory
       (t "") ;; regular file
       ))))
+
+(defun eshell-tree-count-lines (struct)
+  (if struct
+      (+ 1
+         (apply '+ (mapcar 'eshell-tree-count-lines
+                           (cdr (assoc 'children struct)))))
+    0))
 
 (defun eshell-tree-displayable-file (file)
   (eshell-tree-displayable-filename (nth 0 file)))
