@@ -78,6 +78,12 @@
    (t (eshell-tree-make-struct file nil nil)) ;; regular file
    ))
 
+(defun eshell-tree-map-fold-struct (map fold struct)
+  (funcall fold (funcall map struct)
+           (mapcar
+            (lambda (struct) (eshell-tree-map-fold-struct map fold struct))
+            (cdr (assoc 'children struct)))))
+
 (defun eshell-tree-show-file-from-struct (struct prefix-self prefix-child)
   (let ((file (cdr (assoc 'file struct)))
         (open (cdr (assoc 'open struct)))
@@ -106,11 +112,10 @@
       ))))
 
 (defun eshell-tree-count-lines (struct)
-  (if struct
-      (+ 1
-         (apply '+ (mapcar 'eshell-tree-count-lines
-                           (cdr (assoc 'children struct)))))
-    0))
+  (eshell-tree-map-fold-struct
+   (lambda (struct) 1)
+   (lambda (self children) (apply '+ self children))
+   struct))
 
 (defun eshell-tree-displayable-file (file)
   (eshell-tree-displayable-filename (nth 0 file)))
