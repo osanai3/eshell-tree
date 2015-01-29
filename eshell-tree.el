@@ -21,12 +21,6 @@
 ;; (require 'eshell-tree)
 ;; (fset 'eshell/tree (symbol-function 'eshell-tree))
 
-;; TODO:
-;; close directory by click
-;; open directory by click
-;; max-depth
-;; follow symlink
-
 ;;; Code:
 
 (require 'cl-lib)
@@ -36,35 +30,31 @@
       (mapconcat (symbol-function 'eshell-tree-single-file) filenames "")
     (eshell-tree-single-file ".")))
 
-(defun eshell-tree-file-button (filename)
-  (with-output-to-string
-    (with-current-buffer
-        standard-output
-      (insert-text-button
-       filename
-       'eshell-tree-file-name
-       (concat default-directory filename)
-       'action
-       (lambda (button)
-         (find-file (button-get button 'eshell-tree-file-name)))))))
-
 (defun eshell-tree-single-file (filename)
-  (let ((struct (eshell-tree-build-struct-from-filename filename)))
+  (let ((struct (eshell-tree-build-struct-from-filename filename "")))
     (when struct
-      (eshell-tree-show-file-from-struct struct "" ""))))
+      (eshell-tree-show-file-from-struct struct))))
 
 (defun eshell-tree-directory-files (dirname)
   (cl-remove-if-not
    (symbol-function 'eshell-tree-displayable-file)
    (directory-files-and-attributes dirname)))
 
-(defun eshell-tree-build-struct-from-filename (filename)
+(defun eshell-tree-build-struct-from-filename (filename directory)
   (let ((attr (file-attributes filename)))
     (when attr
-      (eshell-tree-build-struct (cons filename attr)))))
+      (eshell-tree-build-struct (cons filename attr) directory))))
 
-(defun eshell-tree-build-struct (file)
-  (cons (list (cons 'file file) (cons 'open nil)) nil))
+(defun eshell-tree-build-struct (file directory)
+  (cons
+   (list
+    (cons 'file file)
+    (cons 'directory directory))
+   (when (eq t (cadr file)) ; directory
+     (mapcar
+      (lambda (child)
+        (eshell-tree-build-struct child (concat directory (car file) "/")))
+      (eshell-tree-directory-files (concat directory (car file)))))))
 
 (defun eshell-tree-fold-struct (func struct)
   (funcall
@@ -131,8 +121,8 @@
        (concat
         self
         (apply 'concat (mapcar
-         (apply-partially 'eshell-tree-add-line-prefix "|-- " "|   ")
-         preceding))
+                        (apply-partially 'eshell-tree-add-line-prefix "|-- " "|   ")
+                        preceding))
         (when last (eshell-tree-add-line-prefix "`-- " "    " last)))
        ))
    struct))
@@ -145,33 +135,26 @@
 (defun eshell-tree-map-fold-struct (map fold struct)
   (eshell-tree-fold-struct fold (eshell-tree-map-struct map struct)))
 
-;(defun eshell-tree-show-file-from-struct (struct prefix-self prefix-child)
-;  (let ((file (cdr (assoc 'file struct)))
-;        (open (cdr (assoc 'open struct)))
-;        (children (cdr (assoc 'children struct))))
-;    (concat
-;     prefix-self (eshell-tree-file-button (car file))
-;     (when (cadr file) (concat " " "[-]"))
-;     "\n"
-;     (cond
-;      ((stringp (cadr file)) "") ;;symlink
-;      ((cadr file)
-;       (let ((default-directory (concat default-directory (car file) "/"))
-;             (preceding (reverse (cdr (reverse children))))
-;             (last (car (reverse children))))
-;         (concat
-;          (apply 'concat
-;                 (mapcar (lambda (file)
-;                           (eshell-tree-show-file-from-struct
-;                            file
-;                            (concat prefix-child "|-- ")
-;                            (concat prefix-child "|   ")))
-;                         preceding))
-;          (eshell-tree-show-file-from-struct
-;           last (concat prefix-child "`-- ") (concat prefix-child "    "))))) ;; directory
-;      (t "") ;; regular file
-;      ))))
+(defun eshell-tree-file-button (filename directory)
+  (with-output-to-string
+    (with-current-buffer
+        standard-output
+      (insert-text-button
+       filename
+       'eshell-tree-file-name
+       (concat default-directory directory filename)
+       'action
+       (lambda (button)
+         (find-file (button-get button 'eshell-tree-file-name)))))))
 
+(defun eshell-tree-show-single-file-from-struct (struct)
+  (let ((file (cdr (assoc 'file struct)))
+        (directory (cdr (assoc 'directory struct))))
+    (concat (eshell-tree-file-button (car file) directory) "\n")))
+
+(defun eshell-tree-show-file-from-struct (struct)
+  (eshell-tree-treeize-struct
+   (eshell-tree-map-struct 'eshell-tree-show-single-file-from-struct struct)))
 (defun eshell-tree-count-lines (struct)
   (eshell-tree-map-fold-struct
    (lambda (struct) 1)
