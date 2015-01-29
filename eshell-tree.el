@@ -132,9 +132,6 @@
   (eshell-tree-treeize-struct eshell-tree-test-struct)
   "aa\n|-- bbb\n|   `-- ccc\n`-- dddd\n    `-- eeee\n"))
 
-(defun eshell-tree-map-fold-struct (map fold struct)
-  (eshell-tree-fold-struct fold (eshell-tree-map-struct map struct)))
-
 (defun eshell-tree-file-button (filename directory)
   (with-output-to-string
     (with-current-buffer
@@ -155,16 +152,6 @@
 (defun eshell-tree-show-file-from-struct (struct)
   (eshell-tree-treeize-struct
    (eshell-tree-map-struct 'eshell-tree-show-single-file-from-struct struct)))
-(defun eshell-tree-count-lines (struct)
-  (eshell-tree-map-fold-struct
-   (lambda (struct) 1)
-   (lambda (self children) (apply '+ self children))
-   struct))
-
-(cl-assert
- (equal
-  5
-  (eshell-tree-count-lines eshell-tree-test-struct)))
 
 (defun eshell-tree-displayable-file (file)
   (eshell-tree-displayable-filename (nth 0 file)))
