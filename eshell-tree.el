@@ -64,9 +64,9 @@
    (mapcar (apply-partially 'eshell-tree-fold-struct func) (cdr struct))))
 
 (defun eshell-tree-map-struct (func struct)
-  (cons
-   (funcall func (car struct))
-   (mapcar (apply-partially 'eshell-tree-map-struct func) (cdr struct))))
+  (eshell-tree-fold-struct
+   (lambda (parent children) (cons (funcall func parent) children))
+   struct))
 
 (defconst eshell-tree-test-struct
   (cons "aa\n"
